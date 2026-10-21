@@ -399,9 +399,6 @@ export function Scrollytelling({ data }: ScrollytellingProps) {
             <p className="mt-1 font-serif text-lg leading-none text-ink/90 sm:text-xl">
               {mode === 'waffle' ? 'Regrouped by class' : 'Dominant land use'}
             </p>
-            <span className="mt-2 inline-block rounded-full border border-ink/15 bg-[#fffdf8]/75 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-ink/55 backdrop-blur-sm">
-              Raw dominant
-            </span>
           </div>
 
           <div className="pointer-events-none absolute bottom-3 left-4 right-4 flex items-end justify-between gap-4 text-[9px] leading-tight text-ink/40 sm:left-6 sm:right-6">
