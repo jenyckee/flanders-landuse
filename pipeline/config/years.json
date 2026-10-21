@@ -1,22 +1,22 @@
 [
   {
     "year": 2013,
-    "file": "lu_landgebruik_vlaa_2013_v3/lu_landgebruik_vlaa_2013_v3.tif",
+    "file": "data/lu_landgebruik_vlaa_2013_v3/lu_landgebruik_vlaa_2013_v3.tif",
     "description": "Land use 2013 (v3, republished 2023)"
   },
   {
     "year": 2016,
-    "file": "lu_landgebruik_vlaa_2016_v3/lu_landgebruik_vlaa_2016_v3.tif",
+    "file": "data/lu_landgebruik_vlaa_2016_v3/lu_landgebruik_vlaa_2016_v3.tif",
     "description": "Land use 2016 (v3, republished 2023)"
   },
   {
     "year": 2022,
-    "file": "lu_landgebruik_vlaa_2022_v3/lu_landgebruik_vlaa_2022_v3.tif",
+    "file": "data/lu_landgebruik_vlaa_2022_v3/lu_landgebruik_vlaa_2022_v3.tif",
     "description": "Land use 2022 (v3)"
   },
   {
     "year": 2025,
-    "file": "lu_landgebruik_vlaa_2025_v3.tiff",
+    "file": "data/lu_landgebruik_vlaa_2025_v3/lu_landgebruik_vlaa_2025_v3.tif",
     "description": "Land use 2025 (v3, published 2026)"
   }
 ]

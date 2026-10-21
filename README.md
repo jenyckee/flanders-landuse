@@ -5,7 +5,7 @@ story and a scroll-driven evolution view for 2013, 2016, 2022 and 2025.
 
 ## Data
 
-Sources: `lu_landgebruik_vlaa_{year}_v3` rasters from Departement Omgeving,
+Sources: `data/lu_landgebruik_vlaa_{year}_v3` rasters from Departement Omgeving,
 Landgebruik Vlaanderen v3 (2025 published 2026). CRS: EPSG:31370. Native
 resolution: 10 m. Sources are listed in `pipeline/config/years.json`.
 
