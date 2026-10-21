@@ -1,16 +1,104 @@
 {
-  "source": "lu_landgebruik_vlaa_2025_v3.tiff",
-  "source_crs": "EPSG:31370",
-  "year": 2025,
-  "tile_size_m": 2000,
-  "tile_area_km2": 4.0,
   "total_area_km2": 13624.4393,
   "valid_pixel_count": 136244393,
   "retained_tiles": 3407,
-  "correction": {
-    "applied": false,
-    "method": "raw dominant class"
-  },
+  "tile_size_m": 2000,
+  "tile_area_km2": 4.0,
+  "classes": [
+    {
+      "id": "cropland",
+      "nl": "Akkerland",
+      "en": "Cropland",
+      "color": "#d9b45b",
+      "area_km2": 4217.2803,
+      "percent": 30.9538,
+      "raw_tile_count": 1731,
+      "target_tile_count": 1054
+    },
+    {
+      "id": "grassland",
+      "nl": "Grasland",
+      "en": "Grassland",
+      "color": "#9bbf72",
+      "area_km2": 2747.3846,
+      "percent": 20.1651,
+      "raw_tile_count": 475,
+      "target_tile_count": 687
+    },
+    {
+      "id": "built",
+      "nl": "Bebouwd gebied",
+      "en": "Built-up",
+      "color": "#c46b5a",
+      "area_km2": 2126.2542,
+      "percent": 15.6062,
+      "raw_tile_count": 570,
+      "target_tile_count": 532
+    },
+    {
+      "id": "forest",
+      "nl": "Bos",
+      "en": "Forest",
+      "color": "#2f6b4f",
+      "area_km2": 1501.6532,
+      "percent": 11.0218,
+      "raw_tile_count": 378,
+      "target_tile_count": 375
+    },
+    {
+      "id": "transport",
+      "nl": "Transport en infrastructuur",
+      "en": "Transport & infrastructure",
+      "color": "#5b5b5b",
+      "area_km2": 855.3424,
+      "percent": 6.278,
+      "raw_tile_count": 12,
+      "target_tile_count": 214
+    },
+    {
+      "id": "nature",
+      "nl": "Natuur en overige open ruimte",
+      "en": "Nature & other open land",
+      "color": "#5fa08c",
+      "area_km2": 769.6952,
+      "percent": 5.6494,
+      "raw_tile_count": 62,
+      "target_tile_count": 193
+    },
+    {
+      "id": "industry",
+      "nl": "Industrie, handel en diensten",
+      "en": "Industry, commerce & services",
+      "color": "#8b6aae",
+      "area_km2": 676.0215,
+      "percent": 4.9618,
+      "raw_tile_count": 129,
+      "target_tile_count": 169
+    },
+    {
+      "id": "recreation",
+      "nl": "Recreatie",
+      "en": "Recreation",
+      "color": "#e39b52",
+      "area_km2": 403.9085,
+      "percent": 2.9646,
+      "raw_tile_count": 26,
+      "target_tile_count": 101
+    },
+    {
+      "id": "water",
+      "nl": "Water",
+      "en": "Water",
+      "color": "#4c7fb0",
+      "area_km2": 326.8994,
+      "percent": 2.3994,
+      "raw_tile_count": 24,
+      "target_tile_count": 82
+    }
+  ],
+  "source": "lu_landgebruik_vlaa_2025_v3.tif",
+  "source_crs": "EPSG:31370",
+  "year": 2025,
   "map": {
     "origin_x": 22000.0,
     "origin_y": 245000.0,
@@ -21,87 +109,8 @@
     "min_row": 1,
     "max_row": 45
   },
-  "classes": [
-    {
-      "id": "cropland",
-      "nl": "Akkerland",
-      "en": "Cropland",
-      "color": "#d9b45b",
-      "area_km2": 4217.2803,
-      "percent": 30.9538,
-      "raw_tile_count": 1731
-    },
-    {
-      "id": "grassland",
-      "nl": "Grasland",
-      "en": "Grassland",
-      "color": "#9bbf72",
-      "area_km2": 2747.3846,
-      "percent": 20.1651,
-      "raw_tile_count": 475
-    },
-    {
-      "id": "built",
-      "nl": "Bebouwd gebied",
-      "en": "Built-up",
-      "color": "#c46b5a",
-      "area_km2": 2126.2542,
-      "percent": 15.6062,
-      "raw_tile_count": 570
-    },
-    {
-      "id": "forest",
-      "nl": "Bos",
-      "en": "Forest",
-      "color": "#2f6b4f",
-      "area_km2": 1501.6532,
-      "percent": 11.0218,
-      "raw_tile_count": 378
-    },
-    {
-      "id": "transport",
-      "nl": "Transport en infrastructuur",
-      "en": "Transport & infrastructure",
-      "color": "#5b5b5b",
-      "area_km2": 855.3424,
-      "percent": 6.278,
-      "raw_tile_count": 12
-    },
-    {
-      "id": "nature",
-      "nl": "Natuur en overige open ruimte",
-      "en": "Nature & other open land",
-      "color": "#5fa08c",
-      "area_km2": 769.6952,
-      "percent": 5.6494,
-      "raw_tile_count": 62
-    },
-    {
-      "id": "industry",
-      "nl": "Industrie, handel en diensten",
-      "en": "Industry, commerce & services",
-      "color": "#8b6aae",
-      "area_km2": 676.0215,
-      "percent": 4.9618,
-      "raw_tile_count": 129
-    },
-    {
-      "id": "recreation",
-      "nl": "Recreatie",
-      "en": "Recreation",
-      "color": "#e39b52",
-      "area_km2": 403.9085,
-      "percent": 2.9646,
-      "raw_tile_count": 26
-    },
-    {
-      "id": "water",
-      "nl": "Water",
-      "en": "Water",
-      "color": "#4c7fb0",
-      "area_km2": 326.8994,
-      "percent": 2.3994,
-      "raw_tile_count": 24
-    }
-  ]
+  "correction": {
+    "applied": false,
+    "method": "raw dominant class"
+  }
 }

@@ -1,8 +1,13 @@
-"""Build a square-tile land-use map for Flanders.
+"""Build multi-year land-use evolution dataset for Flanders.
 
-The source raster is aggregated into square tiles in EPSG:31370. Each retained
-tile is assigned the grouped land-use class with the most valid source pixels.
-No largest-remainder correction is applied in this milestone.
+Outputs:
+  - frontend/public/data/stats.json      (2025 default, for existing scrollytelling)
+  - frontend/public/data/tiles.json      (2025 default tiles)
+  - frontend/public/data/evolution.json   (multi-year with transitions)
+
+Usage:
+  ./build_tiles.py                    # use years from config/years.json
+  ./build_tiles.py --input 2013=/p/to/file.tif  # custom inputs
 """
 
 from __future__ import annotations
@@ -10,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -17,268 +23,352 @@ import rasterio
 from rasterio.windows import Window
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_INPUT = ROOT / "lu_landgebruik_vlaa_2025_v3.tiff"
 DEFAULT_OUTPUT_DIR = ROOT / "frontend" / "public" / "data"
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config" / "landuse_classes.json"
+DEFAULT_YEARS = Path(__file__).resolve().parent / "config" / "years.json"
 
 TILE_SIZE_M = 2000
 MIN_VALID_FRACTION = 0.5
+PIXEL_AREA_KM2 = 0.0001  # 10 m × 10 m
 
 
 def load_config(path: Path) -> tuple[dict, np.ndarray, list[str]]:
     with path.open(encoding="utf-8") as handle:
         config = json.load(handle)
-
     source_classes = config["source_classes"]
     groups = config["groups"]
-
     source_ids = [int(item["id"]) for item in source_classes]
-    if len(source_ids) != len(set(source_ids)):
-        raise ValueError("Duplicate source class IDs in config")
-
     max_source_id = max(source_ids)
     lookup = np.full(max_source_id + 1, -1, dtype=np.int16)
     group_ids: list[str] = []
-    seen_groups: set[str] = set()
-
     for group_index, group in enumerate(groups):
-        group_id = group["id"]
-        if group_id in seen_groups:
-            raise ValueError(f"Duplicate group ID: {group_id}")
-        seen_groups.add(group_id)
-        group_ids.append(group_id)
-
-        for source_id in group["source_classes"]:
-            source_id = int(source_id)
-            if source_id < 1 or source_id > max_source_id:
-                raise ValueError(f"Source class {source_id} is out of range")
-            if lookup[source_id] != -1:
-                raise ValueError(
-                    f"Source class {source_id} is mapped to more than one group"
-                )
-            lookup[source_id] = group_index
-
-    unmapped = [
-        source_id
-        for source_id in source_ids
-        if lookup[source_id] == -1
-    ]
-    if unmapped:
-        raise ValueError(f"Unmapped source classes: {unmapped}")
-
+        gid = group["id"]
+        group_ids.append(gid)
+        for sid in group["source_classes"]:
+            sid = int(sid)
+            if lookup[sid] != -1:
+                raise ValueError(f"Source class {sid} is mapped to more than one group")
+            lookup[sid] = group_index
     return config, lookup, group_ids
 
 
-def summarize_tile(
-    group_counts: np.ndarray,
-    full_pixel_count: int,
-    min_valid_fraction: float,
-) -> tuple[int, int]:
-    """Return (dominant group index, valid pixel count), or (-1, 0)."""
-    valid_count = int(group_counts.sum())
-    if valid_count == 0 or valid_count / full_pixel_count < min_valid_fraction:
-        return -1, valid_count
-    return int(np.argmax(group_counts)), valid_count
+def load_years(path: Path, root: Path) -> list[tuple[int, Path]]:
+    with path.open(encoding="utf-8") as handle:
+        data = json.load(handle)
+    years = []
+    for entry in data:
+        year = entry["year"]
+        f = entry.get("file", "")
+        years.append((year, Path(f) if os.path.isabs(f) else root / f))
+    return sorted(years)
 
 
-def build_tiles(
-    input_path: Path,
-    output_dir: Path,
-    config_path: Path,
-    tile_size_m: int,
-    min_valid_fraction: float,
-) -> dict:
-    config, lookup, group_ids = load_config(config_path)
-    group_count = len(group_ids)
+def summarize_tile(group_counts, full_pixel_count, min_valid_fraction):
+    valid = int(group_counts.sum())
+    if valid == 0 or valid / full_pixel_count < min_valid_fraction:
+        return -1, valid
+    return int(np.argmax(group_counts)), valid
 
-    with rasterio.open(input_path) as src:
-        if src.crs is None or src.crs.to_epsg() != 31370:
-            raise ValueError(f"Expected EPSG:31370, found {src.crs}")
 
-        transform = src.transform
-        res_x = abs(transform.a)
-        res_y = abs(transform.e)
-        pixel_area_km2 = (res_x * res_y) / 1_000_000
+def largest_remainder(rounds: list[float], total: int) -> np.ndarray:
+    target = np.floor(rounds).astype(int)
+    diff = total - int(target.sum())
+    rem = rounds - target
+    if diff > 0:
+        order = np.argsort(-rem)[:diff]
+        target[order] += 1
+    elif diff < 0:
+        order = np.argsort(rem)[: -diff]
+        target[order] -= 1
+    return target
 
-        tile_px_x = tile_size_m / res_x
-        tile_px_y = tile_size_m / res_y
-        if not math.isclose(tile_px_x, round(tile_px_x), abs_tol=1e-6):
-            raise ValueError("Tile size must be a whole number of pixels in x")
-        if not math.isclose(tile_px_y, round(tile_px_y), abs_tol=1e-6):
-            raise ValueError("Tile size must be a whole number of pixels in y")
-        tile_px_x = int(round(tile_px_x))
-        tile_px_y = int(round(tile_px_y))
-        if tile_px_x != tile_px_y:
-            raise ValueError("Source pixels must be square")
 
-        full_tile_pixels = tile_px_x * tile_px_y
-        origin_x = src.bounds.left
-        origin_y = src.bounds.top
-        cols = math.ceil(src.width / tile_px_x)
-        rows = math.ceil(src.height / tile_px_y)
+def aggregate_year(src, lookup, G, tpx, tile_size_m, min_valid_fraction):
+    res_x = abs(src.transform.a)
+    full_tile_pixels = tpx * tpx
+    width, height = src.width, src.height
+    origin_x, origin_y = src.bounds.left, src.bounds.top
+    cols = math.ceil(width / tpx)
+    rows = math.ceil(height / tpx)
 
-        source_pixel_counts = np.zeros(20, dtype=np.int64)
-        raw_group_counts = np.zeros(group_count, dtype=np.int64)
-        tiles: list[dict] = []
-        retained = 0
+    group_counts = np.zeros((rows, cols, G), dtype=np.int64)
+    valid_counts = np.zeros((rows, cols), dtype=np.int64)
+    source_counts = np.zeros(20, dtype=np.int64)
 
-        for row in range(rows):
-            row_top_m = origin_y - row * tile_size_m
-            row_bottom_m = row_top_m - tile_size_m
-            row_start = max(
-                0, int(round((origin_y - row_top_m) / res_y))
-            )
-            row_end = min(
-                src.height,
-                int(round((origin_y - row_bottom_m) / res_y)),
-            )
-            if row_end <= row_start:
+    for row in range(rows):
+        row_start = max(0, int(round((origin_y - row * tile_size_m) / res_x)))
+        row_end = min(height, int(round((origin_y - (row * tile_size_m + tile_size_m)) / res_x)))
+        if row_end <= row_start:
+            row_start = row * tpx
+            row_end = min(height, row_start + tpx)
+        if row_end <= row_start:
+            continue
+        strip = src.read(
+            1,
+            window=Window(col_off=0, row_off=row_start, width=src.width, height=row_end - row_start),
+        )
+        all_valid = (strip >= 1) & (strip <= 19)
+        source_counts += np.bincount(strip[all_valid], minlength=20)
+
+        for col in range(cols):
+            c0 = col * tpx
+            c1 = min(width, c0 + tpx)
+            tile = strip[:, c0:c1]
+            v = tile[(tile >= 1) & (tile <= 19)]
+            if len(v) == 0:
                 continue
+            group_counts[row, col] = np.bincount(lookup[v], minlength=G)
+            valid_counts[row, col] = len(v)
 
-            strip = src.read(
-                1,
-                window=Window(
-                    col_off=0,
-                    row_off=row_start,
-                    width=src.width,
-                    height=row_end - row_start,
-                ),
-            )
-            valid_strip = (strip >= 1) & (strip <= 19)
-            source_pixel_counts += np.bincount(
-                strip[valid_strip], minlength=20
-            )
+    min_valid = min_valid_fraction * tpx * tpx
+    retained = valid_counts >= min_valid
+    dominant = group_counts.argmax(axis=-1)
+    dominant[valid_counts < min_valid] = -1
 
-            for col in range(cols):
-                col_start = col * tile_px_x
-                if col_start >= src.width:
-                    continue
-                col_end = min(src.width, col_start + tile_px_x)
-                tile_pixels = strip[:, col_start:col_end]
-                valid_mask = (tile_pixels >= 1) & (tile_pixels <= 19)
-                valid_values = tile_pixels[valid_mask]
-
-                group_counts = np.bincount(
-                    lookup[valid_values], minlength=group_count
-                )
-                dominant_index, valid_count = summarize_tile(
-                    group_counts, full_tile_pixels, min_valid_fraction
-                )
-                if dominant_index < 0:
-                    continue
-
-                retained += 1
-                raw_group_counts[dominant_index] += 1
-                tiles.append(
-                    {
-                        "id": f"r{row:03d}c{col:03d}",
-                        "col": col,
-                        "row": row,
-                        "class": group_ids[dominant_index],
-                    }
-                )
-
-    total_pixels = int(source_pixel_counts.sum())
-    total_area_km2 = total_pixels * pixel_area_km2
-
-    source_class_areas = {
-        int(source_id): float(count * pixel_area_km2)
-        for source_id, count in enumerate(source_pixel_counts)
-        if source_id > 0
+    return {
+        "group_counts": group_counts,
+        "valid_counts": valid_counts,
+        "dominant": dominant,
+        "retained": retained,
+        "source_counts": source_counts,
+        "origin_x": origin_x,
+        "origin_y": origin_y,
+        "crs": str(src.crs),
+        "cols": cols,
+        "rows": rows,
     }
-
-    group_area_by_id = {
-        group["id"]: sum(
-            source_class_areas[int(source_id)]
-            for source_id in group["source_classes"]
-        )
-        for group in config["groups"]
-    }
-
-    classes = []
-    for group_index, group in enumerate(config["groups"]):
-        area_km2 = group_area_by_id[group["id"]]
-        classes.append(
-            {
-                "id": group["id"],
-                "nl": group["nl"],
-                "en": group["en"],
-                "color": group["color"],
-                "area_km2": round(area_km2, 4),
-                "percent": round(100 * area_km2 / total_area_km2, 4),
-                "raw_tile_count": int(raw_group_counts[group_index]),
-            }
-        )
-    classes.sort(key=lambda item: item["area_km2"], reverse=True)
-
-    stats = {
-        "source": input_path.name,
-        "source_crs": "EPSG:31370",
-        "year": 2025,
-        "tile_size_m": tile_size_m,
-        "tile_area_km2": round(tile_size_m * tile_size_m / 1_000_000, 4),
-        "total_area_km2": round(total_area_km2, 4),
-        "valid_pixel_count": total_pixels,
-        "retained_tiles": retained,
-        "correction": {
-            "applied": False,
-            "method": "raw dominant class",
-        },
-        "map": {
-            "origin_x": float(origin_x),
-            "origin_y": float(origin_y),
-            "cols": cols,
-            "rows": rows,
-            "min_col": min(tile["col"] for tile in tiles),
-            "max_col": max(tile["col"] for tile in tiles),
-            "min_row": min(tile["row"] for tile in tiles),
-            "max_row": max(tile["row"] for tile in tiles),
-        },
-        "classes": classes,
-    }
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    with (output_dir / "tiles.json").open("w", encoding="utf-8") as handle:
-        json.dump({"tiles": tiles}, handle, ensure_ascii=False, separators=(",", ":"))
-    with (output_dir / "stats.json").open("w", encoding="utf-8") as handle:
-        json.dump(stats, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
-
-    return stats
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--tile-size-m", type=int, default=TILE_SIZE_M)
-    parser.add_argument(
-        "--min-valid-fraction", type=float, default=MIN_VALID_FRACTION
-    )
-    return parser.parse_args()
 
 
 def main() -> None:
-    args = parse_args()
-    stats = build_tiles(
-        input_path=args.input,
-        output_dir=args.output_dir,
-        config_path=args.config,
-        tile_size_m=args.tile_size_m,
-        min_valid_fraction=args.min_valid_fraction,
-    )
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", action="append", default=None)
+    parser.add_argument("--years-config", type=Path, default=DEFAULT_YEARS)
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument("--tile-size-m", type=int, default=TILE_SIZE_M)
+    parser.add_argument("--min-valid-fraction", type=float, default=MIN_VALID_FRACTION)
+    args = parser.parse_args()
 
-    print(
-        f"Wrote {stats['retained_tiles']:,} tiles at "
-        f"{stats['tile_size_m'] / 1000:g} km to {args.output_dir}"
-    )
-    print(f"Total valid area: {stats['total_area_km2']:,.2f} km²")
-    for item in stats["classes"]:
-        print(
-            f"  {item['en']:<30} {item['area_km2']:>10,.2f} km² "
-            f"{item['percent']:>6.2f}%  {item['raw_tile_count']:>5,} tiles"
-        )
+    config, lookup, group_ids = load_config(args.config)
+    G = len(group_ids)
+    tpx = args.tile_size_m // 10  # pixels per tile side (10 m source res)
+
+    if args.input:
+        items = args.input
+        parsed = []
+        for item in items:
+            if "=" in item:
+                y_str, p_str = item.split("=", 1)
+                parsed.append((int(y_str), Path(p_str)))
+            else:
+                parsed.append((None, Path(item)))
+        sources = [(y, p, abs(rasterio.open(str(p)).transform.a)) for y, p in parsed if p.exists()]
+        sources.sort(key=lambda x: (x[0] is not None, x[0] or 0))
+    else:
+        years_cfg = load_years(args.years_config, ROOT)
+        sources = []
+        for year, path in years_cfg:
+            if not path.exists():
+                print(f"WARNING: missing {path}", flush=True)
+                continue
+            sources.append((year, path, abs(rasterio.open(str(path)).transform.a)))
+
+    if not sources:
+        raise FileNotFoundError("No valid input rasters")
+
+    # Validate identical geometry
+    ref_year, ref_path, ref_res = sources[0]
+    with rasterio.open(str(ref_path)) as ref_src:
+        ref_geom = (ref_src.width, ref_src.height, ref_src.transform)
+
+    results = {}
+    for year, path, res in sources:
+        print(f"Building {year} ...")
+        with rasterio.open(str(path)) as src:
+            results[year] = aggregate_year(src, lookup, G, tpx, args.tile_size_m, args.min_valid_fraction)
+
+    year_order = sorted(results.keys())
+    base = results[year_order[0]]
+    shape = (base["rows"], base["cols"])
+
+    retained = base["retained"]
+    retained_tiles = int(retained.sum())
+    doms = {y: results[y]["dominant"] for y in year_order}
+
+    rows_idx, cols_idx = np.where(retained)
+    min_col = int(cols_idx.min()); max_col = int(cols_idx.max())
+    min_row = int(rows_idx.min()); max_row = int(rows_idx.max())
+
+    origin_x = base["origin_x"]; origin_y = base["origin_y"]
+    total_area_km2 = int(base["source_counts"][1:].sum()) * PIXEL_AREA_KM2
+    valid_pixel_count = int(base["source_counts"][1:].sum())
+
+    year_stats = {}
+
+    for year in year_order:
+        dom = results[year]["dominant"]
+        scounts = results[year]["source_counts"]
+
+        group_pixels = np.zeros(G, dtype=np.int64)
+        for sid in range(1, 20):
+            group_pixels[lookup[sid]] += scounts[sid]
+        areas = group_pixels * PIXEL_AREA_KM2
+
+        total_area_km2_y = float(areas.sum())
+        counts = np.zeros(G, dtype=int)
+        for r, c in zip(rows_idx, cols_idx):
+            g = int(dom[r, c])
+            if g >= 0:
+                counts[g] += 1
+
+        cls = []
+        for gi, gid in enumerate(group_ids):
+            g = config["groups"][gi]
+            cls.append({
+                "id": gid,
+                "nl": g["nl"],
+                "en": g["en"],
+                "color": g["color"],
+                "area_km2": round(float(areas[gi]), 4),
+                "percent": round(100 * float(areas[gi]) / total_area_km2_y, 4),
+                "raw_tile_count": int(counts[gi]),
+                "target_tile_count": 0,
+            })
+        target = largest_remainder([c["area_km2"] / args.tile_size_m ** 2 * 1_000_000 for c in cls], retained_tiles)
+        for i in range(G):
+            cls[i]["target_tile_count"] = int(target[i])
+        cls.sort(key=lambda x: x["area_km2"], reverse=True)
+
+        year_stats[str(year)] = {
+            "total_area_km2": round(total_area_km2_y, 4),
+            "valid_pixel_count": int(scounts[1:].sum()),
+            "retained_tiles": retained_tiles,
+            "tile_size_m": args.tile_size_m,
+            "tile_area_km2": args.tile_size_m ** 2 / 1_000_000,
+            "classes": cls,
+        }
+
+    # Setup for transitions
+    years_map = dict((y, p) for y, p, _ in sources)
+    src_opens = dict((y, None) for y, _, _ in sources)
+
+    def open_year(year):
+        if src_opens[year] is None:
+            src_opens[year] = rasterio.open(str(years_map[year]))
+        return src_opens[year]
+
+    transitions = {}
+    for i in range(len(year_order)):
+        for j in range(i + 1, len(year_order)):
+            ya, yb = year_order[i], year_order[j]
+            key = f"{ya}-{yb}"
+            mat = np.zeros((G, G), dtype=np.int64)
+            sa = open_year(ya)
+            sb = open_year(yb)
+            for row in range(0, sa.height, tpx):
+                r1 = min(sa.height, row + tpx)
+                a = sa.read(1, window=Window(0, row, sa.width, r1 - row))
+                b = sb.read(1, window=Window(0, row, sb.width, r1 - row))
+                m = (a >= 1) & (a <= 19) & (b >= 1) & (b <= 19)
+                pairs = lookup[a[m]] * G + lookup[b[m]]
+                mat += np.bincount(pairs, minlength=G * G).reshape(G, G)
+            mat_km2 = mat.astype(np.float64) * PIXEL_AREA_KM2
+            changed = total_area_km2 - float(np.trace(mat_km2).sum())
+            tile_changes = int(sum(1 for r, c in zip(rows_idx, cols_idx) if doms[ya][r, c] != doms[yb][r, c]))
+            net = {}
+            for gi in range(G):
+                gained = float(mat_km2[:, gi].sum() - mat_km2[gi, gi])
+                lost = float(mat_km2[gi, :].sum() - mat_km2[gi, gi])
+                net[group_ids[gi]] = {"gained_km2": round(gained, 4), "lost_km2": round(lost, 4)}
+            transitions[key] = {
+                "matrix_km2": [[round(float(v), 4) for v in row] for row in mat_km2],
+                "changed_km2": round(changed, 4),
+                "tile_changes": tile_changes,
+                "net_changes": net,
+            }
+
+    # Close open sources
+    for src in src_opens.values():
+        if src is not None:
+            src.close()
+
+    tiles_list = []
+    for r, c in zip(rows_idx, cols_idx):
+        tiles_list.append({
+            "id": f"r{r:03d}c{c:03d}",
+            "col": int(c),
+            "row": int(r),
+            "classes": [int(doms[y][r, c]) for y in year_order],
+        })
+
+    classes = [
+        {"id": gid, "nl": config["groups"][gi]["nl"], "en": config["groups"][gi]["en"], "color": config["groups"][gi]["color"]}
+        for gi, gid in enumerate(group_ids)
+    ]
+
+    evolution = {
+        "years": year_order,
+        "default_year": year_order[-1],
+        "tile_size_m": args.tile_size_m,
+        "tile_area_km2": args.tile_size_m ** 2 / 1_000_000,
+        "common_area_km2": round(total_area_km2, 4),
+        "valid_pixel_count": valid_pixel_count,
+        "retained_tiles": retained_tiles,
+        "map": {
+            "origin_x": float(origin_x),
+            "origin_y": float(origin_y),
+            "cols": base["cols"],
+            "rows": base["rows"],
+            "min_col": min_col,
+            "max_col": max_col,
+            "min_row": min_row,
+            "max_row": max_row,
+        },
+        "classes": classes,
+        "year_stats": year_stats,
+        "tiles": tiles_list,
+        "transitions": transitions,
+    }
+
+    output_dir = args.output_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "evolution.json").open("w", encoding="utf-8") as f:
+        json.dump(evolution, f, ensure_ascii=False, indent=2)
+    print(f"Wrote {output_dir / 'evolution.json'}")
+
+    # Write backward-compatible stats.json / tiles.json for default year
+    default_year = year_order[-1]
+    default_stats = year_stats[str(default_year)].copy()
+    default_stats["source"] = f"lu_landgebruik_vlaa_{default_year}_v3.tif"
+    default_stats["source_crs"] = base["crs"]
+    default_stats["year"] = default_year
+    default_stats["map"] = evolution["map"]
+    default_stats["correction"] = {"applied": False, "method": "raw dominant class"}
+
+    with (output_dir / "stats.json").open("w", encoding="utf-8") as f:
+        json.dump(default_stats, f, ensure_ascii=False, indent=2)
+
+    # tiles.json for default year: use class from default year (index in year_order)
+    default_idx = year_order.index(default_year)
+    default_tiles = []
+    for t in tiles_list:
+        default_tiles.append({
+            "id": t["id"],
+            "col": t["col"],
+            "row": t["row"],
+            "class": group_ids[t["classes"][default_idx]],
+        })
+    with (output_dir / "tiles.json").open("w", encoding="utf-8") as f:
+        json.dump({"tiles": default_tiles}, f, ensure_ascii=False, separators=(",", ":"))
+
+    print(f"Wrote {output_dir / 'stats.json'} and {output_dir / 'tiles.json'}")
+    print(f"Years: {year_order}")
+    print(f"Retained tiles: {retained_tiles}")
+    print(f"Common area: {total_area_km2:,.2f} km²")
+    for y in year_order:
+        print(f"  {y}: {year_stats[str(y)]['total_area_km2']:,.2f} km²")
+    for k, v in transitions.items():
+        print(f"  {k}: {v['changed_km2']:,.2f} km² changed ({v['tile_changes']} tiles)")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,232 @@
+Landgebruik - Vlaanderen - toestand 2013 
+
+Deze kaart geeft voor iedere 10m-cel binnen het Vlaamse Gewest het werkelijke landgebruik weer, en dit voor referentiejaar 2013. Het concept ‘landgebruik’ 
+verwijst naar het daadwerkelijke gebruik van de grond voor welbepaalde menselijke activiteiten zoals huisvesting, industrie en diensten, recreatie,…of teelten, zoals 
+akkerbouw, grasteelt, ...of natuurlijke begroeiing , zoals bos, struikgewas,... Het werkelijke landgebruik van een locatie is niet noodzakelijk identiek met de 
+juridisch-planologische bestemming van deze locatie. Gronden kunnen bestemd zijn als woongebied, maar effectief in gebruik als grasland of akkerland. Deze kaart 
+bevat geen informatie over de planologische bestemming. Het werkelijke landgebruik, zoals op deze kaart weergegeven, is samengesteld op basis van de 4 
+dataniveaus van het 'landgebruiksbestand 2013'. Meer bepaald gebeurt dit door een combinatie en aggregatie van een aantal categorieën uit de verschillende 
+dataniveaus van dit landgebruiksbestand. Deze geodatalaag werd in 2023 vervangen door een herwerkte versie voor toestand 2013, om conform te blijven met de 
+bijgestelde methode die gehanteerd werd bij de opmaak van toestand 2022. Voor meer details over de totstandkoming van het onderliggende 'landgebruiksbestand' ( 
+met 4 dataniveaus) en de samenstelling tot deze resulterende landgebruikskaart wordt daarom verwezen naar het technisch rapport 'Poelmans Lien, Janssen Liliane, 
+Hambsch Lorenz (2023), Landgebruik en ruimtebeslag in Vlaanderen, toestand 2022, uitgevoerd in opdracht van het Vlaams Planbureau voor Omgeving' dat je 
+
+terugvindt via XXX 
+Identificatie 
+Alternatieve titel Landgebruik - Vlaanderen - toestand 2013 
+Versiedatum 2023-09-01 
+Type versiedatum Creatie: Aanmaakdatum of opnamedatum van de dataset. 
+Versie dataset(serie) versie 3 
+Dataset identificator e64fb9e5-d4d5-5a26-81fa-99adea96c0ec 
+Inhoud 
+Doel van Data over landgebruiksklassen worden gebruikt voor de opmaak van gepubliceerde indicatoren, en voor het uitvoeren van ruimtelijke 
+vervaardiging analyses 
+Status compleet: Productie van de data is compleet / afgerond. 
+
+Contactgegevens service 
+
+Organisatie Departement Omgeving 
+Telefoon 02 553 80 11 
+Adres Koning Albert II-laan 20, bus 8 
+Plaats Brussel 
+Postcode 1000 
+Land België 
+E-mail omgeving@vlaanderen.be 
+Rol Eigenaar: Partij die eigenaar is van de data. 
+
+Contactgegevens service 
+
+Organisatie MercatorNet 
+Telefoon 02 553 83 50 
+Adres Koning Albert II-laan 20, bus 8 
+Plaats Brussel 
+Postcode 1000 
+Land België 
+E-mail MercatorNet@vlaanderen.be 
+Rol Uitgever: Partij die de data publiceert. 
+
+Contactgegevens service 
+
+Naam Contactpersoon Vlaams Planbureau voor Omgeving 
+
+Organisatie Departement Omgeving 
+
+Telefoon 02 553 83 50 
+
+Adres Koning Albert II-laan 20, bus 8 
+
+Plaats Brussel 
+
+Postcode 1000 
+
+Land België 
+
+E-mail vpo.omgeving@vlaanderen.be 
+
+Rol Beheerder: Partij die verantwoordelijkheid heeft geaccepteerd en zorg draagt voor het beheer van de data. 
+
+Frequentie Indien nodig: Data wordt geactualiseerd indien nodig. 
+https://oefen.mercator.vlaanderen.be/raadpleegdienstenmercatorpubliek/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&
+
+Voorbeeldweergave 
+
+FORMAT=image%2Fjpeg&TRANSPARENT=true&STYLES&LAYERS=lu:lu_landgebruik_vlaa_2013_v3&SRS=EPSG%3A31370&
+
+dataset(serie) 
+
+WIDTH=770&HEIGHT=335&BBOX=22500,148200,257700,249000 
+
+Trefwoorden 
+
+GEMET - INSPIRE themes, version 1.0 Landgebruik 
+GDI-Vlaanderen Trefwoorden Herbruikbaar , Kosteloos , Toegevoegd GDI-Vl , Vlaamse Open data 
+Vlaamse regio's Vlaams Gewest 
+INSPIRE - Spatial scope Regionaal 
+Overige trefwoorden MercatorNet , OpenbareMetadata , landgebruik , ruimtebeslag , ruimtemonitor 
+
+
+Ruimtelijk schema dataset(serie) grid: Grid data wordt gebruikt om geografische data te representeren. 
+Ruimtelijke resolutie dataset(serie) 
+
+Grondresolutie 10 m 
+Taal 
+Karakterset 
+Categorie(ën) 
+Aanvullende informatie 
+Nederlands 
+UTF-8: 8-bit variabele grootte universele karakterset, gebaseerd op ISO/IEC 10646 
+Planning, kadaster 
+Gelieve contact op te nemen met de data-eigenaar indien er fouten teruggevonden worden in deze dataset. 
+Begrenzing 
+
+Omschrijving geografische begrenzing Huidige begrenzing 
+
+Omschrijvende rechthoek 
+
+Minimum x-coordinaat 2.53000 
+Maximum x-coordinaat 5.92000 
+Minimum y-coordinaat 50.67000 
+Maximum y-coordinaat 51.51000 
+
+Identificator geografische begrenzing Vlaams Gewest 
+
+Referentiesysteem 
+Horizontaal en/of verticaal referentiesysteem 
+Naam Belge 1972 / Belgian Lambert 72 
+
+Kwaliteit 
+
+Niveau kwaliteitsinformatie Dataset: Informatie heeft betrekking op de dataset. 
+
+Bewerkingen 
+
+Algemene Voor meer details over de totstandkoming van het onderliggende 'landgebruiksbestand' (met 4 dataniveaus) en de samenstelling tot deze resulterende 
+beschrijving landgebruikskaart wordt daarom verwezen naar het technisch rapport 'Poelmans Lien, Janssen Liliane, Hambsch Lorenz (2023), Landgebruik en 
+herkomst ruimtebeslag in Vlaanderen, toestand 2022, uitgevoerd in opdracht van het Vlaams Planbureau voor Omgeving' dat je terugvindt via XXX 
+
+Conformiteit 
+Domeinconsistentie 
+Resultaat 
+Specificatie 
+
+VERORDENING (EU) Nr. 1089/2010 VAN DE COMMISSIE van 23 november 2010 ter uitvoering van Richtlijn 2007/2/EG van het Europees 
+Titel Parlement en de Raad betreffende de interoperabiliteit van verzamelingen ruimtelijke gegevens en van diensten met betrekking tot ruimtelijke 
+gegevens 
+Versiedatum 2010-12-08 
+Type 
+
+Publicatie: Uitgavedatum van de dataset.
+
+versiedatum 
+Uitleg Geharmoniseerd volgens INSPIRE verordening 
+Conform verklaard Nee 
+
+Toegangs- en gebruiksbeperkingen 
+Legale en veiligheidsbeperkingen 
+
+Beperkingen van de dataset(serie) 
+
+Legale beperkingen 
+
+(Juridische) toegangsbeperking anders: Restrictie niet opgenomen in lijst. 
+Overige beperkingen 
+Overige beperkingen Geen beperkingen op de publieke toegang. 
+
+Beperkingen van de dataset(serie) 
+
+Legale beperkingen 
+
+
+(Juridische) gebruiksbeperking anders: Restrictie niet opgenomen in lijst. 
+
+Overige beperkingen 
+
+Overige 
+
+other constraints
+
+beperkingen 
+
+In uitvoering van het Vlaamse decreet voor hergebruik van overheidsinformatie, is het hergebruik geregeld d.m.v. de Modellicentie voor gratis
+
+Overige 
+
+hergebruik. Dit betekent dat elk commercieel of niet-commercieel hergebruik voor onbepaalde duur is toegelaten, zonder dat daar kosten aan
+
+beperkingen 
+
+verbonden zijn. Als enige gebruiksvoorwaarde geldt een bronvermeldingsplicht. 
+Toegang en gebruik voor het uitvoeren van taken van algemeen belang, op niveau van Vlaamse overheidsinstanties is geregeld door het Besluit
+
+Overige 
+
+van de Vlaamse Regering met de regels voor toegang en gebruik van geografische gegevensbronnen toegevoegd aan de GDI, door deelnemers
+
+beperkingen 
+
+GDI-Vlaanderen. Dit gebruik is kosteloos. 
+Toegang en gebruik voor het uitvoeren van taken van algemeen belang door niet-Vlaamse overheidsinstanties is geregeld door het Besluit van de
+
+Overige 
+
+Vlaamse Regering met de regels voor toegang en gebruik van geografische gegevensbronnen toegevoegd aan de GDI, door overheidsdiensten die
+
+beperkingen 
+
+geen deelnemer zijn aan GDI-Vlaanderen. Dit gebruik is kosteloos. 
+
+Beperkingen van de dataset(serie) 
+
+Veiligheidsbeperkingen 
+
+Type veiligheidsbeperking vrij toegankelijk: Beschikbaar voor algemene ontsluiting. 
+
+Distributie 
+
+Distributieformaat GeoTIFF (Version: 1.0) 
+
+Meta-metadata 
+
+Metadata identificator (fileIdentifier) 17c89cef-9516-50ee-81da-e191fcd0e100 
+Taal metadatarecord Nederlands 
+Karakterset metadatarecord UTF-8: 8-bit variabele grootte universele karakterset, gebaseerd op ISO/IEC 10646 
+Hiërarchisch niveau Dataset: Informatie heeft betrekking op de dataset. 
+Beschrijving hiërarchisch niveau Dataset 
+Metadata wijzigingsdatum 2023-09-20 
+Naam metadatastandaard ISO 19115/2003/Cor.1:2006/INSPIRE-TG2.0 
+Versie metadatastandaard GDI-Vlaanderen Best Practices – versie 2.0 
+
+Metadata-auteur 
+
+
+Naam Contactpersoon Vlaams Planbureau voor Omgeving 
+Organisatie Departement Omgeving 
+Telefoon 02 553 83 50 
+Adres Koning Albert II-laan 20, bus 8 
+Plaats Brussel 
+Postcode 1000 
+Land België 
+E-mail vpo.omgeving@vlaanderen.be 
+Rol Contactpunt: Partij waarmee contact kan worden opgenomen voor het vergaren van kennis of verstrekking van de data. 
+
+
