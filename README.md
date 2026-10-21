@@ -10,9 +10,11 @@ Landgebruik Vlaanderen v3 (2025 published 2026). CRS: EPSG:31370. Native
 resolution: 10 m. Sources are listed in `pipeline/config/years.json`.
 
 The pipeline aggregates each raster into 2 km square tiles and assigns each
-retained tile its raw dominant grouped land-use class. Edge tiles with less than
-50% valid area are dropped. Tiles retained in every year form the common area
-used by the evolution view. No area-share correction is applied yet.
+retained tile its dominant grouped land-use class. Edge tiles with less than
+50% valid area are dropped. A largest-remainder correction then reassigns the
+least confident tiles (smallest dominant-class margin) until every class's tile
+count matches its true area share. Tiles retained in every year form the common
+area used by the evolution view.
 
 ## Run the pipeline
 
@@ -64,7 +66,8 @@ npx vercel --prod
 - 3,407 tiles at 2 km, retained in all four snapshots.
 - 13,624.44 km² mapped.
 - Nine grouped land-use classes.
-- Raw dominant-class map only; largest-remainder correction is deferred.
+- Tile counts corrected to true area shares; ~700 tiles per year are
+  reassigned from surplus to deficit classes, lowest confidence first.
 
 ## Views
 
@@ -77,9 +80,8 @@ The header switcher toggles between two views.
 - a regrouped waffle view of the same tiles,
 - a closing step with the data table.
 
-On the waffle view, block sizes show raw dominant tile counts, not true area
-shares. The story states this explicitly; the largest-remainder correction is
-still deferred.
+On the waffle view, block sizes match true area shares after the largest-
+remainder correction; reassigned tiles recolour to their new class.
 
 ### Evolution
 

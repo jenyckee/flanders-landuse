@@ -258,7 +258,7 @@ export function TileCanvas({
       ref={canvasRef}
       className="block h-full w-full"
       role="img"
-      aria-label={`Tile map of dominant land use in Flanders, ${stats.year}. ${stats.retained_tiles.toLocaleString('en-US')} tiles of ${stats.tile_size_m / 1000} kilometres across.`}
+      aria-label={`Tile map of land use in Flanders, ${stats.year}. ${stats.retained_tiles.toLocaleString('en-US')} tiles of ${stats.tile_size_m / 1000} kilometres across.`}
     />
   )
 }

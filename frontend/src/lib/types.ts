@@ -77,7 +77,7 @@ export interface StatsBase {
   total_area_km2: number
   valid_pixel_count: number
   retained_tiles: number
-  correction: { applied: boolean; method: string }
+  correction: { applied: boolean; method: string; reassigned_tiles?: number }
   map: MapMeta
 }
 
@@ -97,6 +97,8 @@ export interface Tile {
   col: number
   row: number
   class: string
+  dominant_class: string
+  margin: number
 }
 
 export interface MapData {

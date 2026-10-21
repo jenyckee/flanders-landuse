@@ -121,7 +121,7 @@ function makeBuckets(tiles: Tile[], stats: Stats): GroupBucket[] {
     buckets.set(item.id, {
       item,
       tileIndices: [],
-      grid: chooseGrid(item.raw_tile_count),
+      grid: chooseGrid(item.target_tile_count),
     })
   }
 
@@ -132,7 +132,7 @@ function makeBuckets(tiles: Tile[], stats: Stats): GroupBucket[] {
   return stats.classes
     .map((item) => buckets.get(item.id))
     .filter((bucket): bucket is GroupBucket => Boolean(bucket))
-    .sort((a, b) => b.item.raw_tile_count - a.item.raw_tile_count)
+    .sort((a, b) => b.item.target_tile_count - a.item.target_tile_count)
 }
 
 function shelfPack(
@@ -233,7 +233,7 @@ export function computeWaffleLayout(
   const blocks: WaffleBlock[] = []
 
   for (const block of best.blocks) {
-    const tileShare = (block.item.raw_tile_count / stats.retained_tiles) * 100
+    const tileShare = (block.item.target_tile_count / stats.retained_tiles) * 100
     const labelHeight = block.labelHeight
 
     block.tileIndices.forEach((tileIndex, slot) => {
@@ -252,7 +252,7 @@ export function computeWaffleLayout(
       nl: block.item.nl,
       en: block.item.en,
       shortLabel: shortLabel(block.item.en),
-      count: block.item.raw_tile_count,
+      count: block.item.target_tile_count,
       tileShare,
       x: block.x,
       y: block.y,

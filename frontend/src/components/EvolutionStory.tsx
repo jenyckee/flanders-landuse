@@ -130,7 +130,7 @@ export function EvolutionStory({ data }: EvolutionStoryProps) {
                 {activeYear}
               </span>
               <span className="text-[10px] uppercase tracking-[0.14em] text-ink/40">
-                dominant class
+                land use
               </span>
             </p>
           </div>
@@ -250,9 +250,9 @@ export function EvolutionStory({ data }: EvolutionStoryProps) {
 
                     <p className="mt-3 text-[13px] leading-relaxed text-ink/65 sm:text-sm">
                       {index === 0
-                        ? `In ${year}, every 2 km square is coloured by its dominant land use. ${number.format(data.retained_tiles)} tiles cover ${number.format(data.common_area_km2)} km² that are present in all ${years.length} snapshots.`
+                        ? `In ${year}, every 2 km square is coloured by its dominant land use, corrected so each class keeps its true share of tiles. ${number.format(data.retained_tiles)} tiles cover ${number.format(data.common_area_km2)} km² that are present in all ${years.length} snapshots.`
                         : transition
-                          ? `${decimal.format(transition.changed_km2)} km² changed between ${previousYear} and ${year}, affecting ${number.format(transition.tile_changes)} tiles. The map crossfades each square from its old dominant class to its new one.`
+                          ? `${decimal.format(transition.changed_km2)} km² changed between ${previousYear} and ${year}, affecting ${number.format(transition.tile_changes)} tiles. The map crossfades each square from its old class to its new one.`
                           : `The map crossfades between ${previousYear} and ${year}.`}
                     </p>
 
@@ -280,7 +280,7 @@ export function EvolutionStory({ data }: EvolutionStoryProps) {
                     <p className="mt-3 text-[10px] leading-relaxed text-ink/40">
                       {index === 0
                         ? 'Scroll to step through the years.'
-                        : 'Colours show the raw dominant class. Area shares are true pixel areas and stay visible below the map.'}
+                        : 'Colours show the dominant class after largest-remainder correction. Area shares are true pixel areas and stay visible below the map.'}
                     </p>
                   </div>
                 </article>

@@ -4,6 +4,11 @@
   "retained_tiles": 3407,
   "tile_size_m": 2000,
   "tile_area_km2": 4.0,
+  "correction": {
+    "applied": true,
+    "method": "largest remainder (lowest-margin reassignment)",
+    "reassigned_tiles": 718
+  },
   "classes": [
     {
       "id": "cropland",
@@ -108,9 +113,5 @@
     "max_col": 117,
     "min_row": 1,
     "max_row": 45
-  },
-  "correction": {
-    "applied": false,
-    "method": "raw dominant class"
   }
 }

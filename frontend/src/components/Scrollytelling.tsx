@@ -33,9 +33,9 @@ interface Size {
 
 const descriptions: Record<string, string> = {
   cropland:
-    'Arable fields dominate the fertile north and central soils. They also dominate the tile map: more than half of all squares are majority cropland.',
+    'Arable fields dominate the fertile north and central soils. They are the largest class in Flanders, covering just under a third of the area.',
   grassland:
-    'Pasture is concentrated in the west and north, often next to cropland. At tile level it loses many mixed squares to its larger neighbour.',
+    'Pasture is concentrated in the west and north, often next to cropland. Many mixed squares are counted as grassland once the tile counts are corrected.',
   built: 'Housing, gardens and other built-up land form the second-largest group by true area, clustered around cities and along the coast.',
   forest:
     'Forest is concentrated in the east and south, with large blocks in the Campine and the southern hills.',
@@ -58,7 +58,7 @@ const decimal = new Intl.NumberFormat('en-US', {
 })
 
 function tileShareOf(item: LandUseClass, retainedTiles: number): number {
-  return (item.raw_tile_count / retainedTiles) * 100
+  return (item.target_tile_count / retainedTiles) * 100
 }
 
 function buildSteps(data: MapData): Step[] {
@@ -74,15 +74,15 @@ function buildSteps(data: MapData): Step[] {
   }))
 
   const waffleBody = cropland
-    ? `Every tile moves into its class block. Block size is the raw tile count, not true land area: cropland takes ${decimal.format(tileShareOf(cropland, stats.retained_tiles))}% of the tiles but only ${decimal.format(cropland.percent)}% of Flanders.`
-    : 'Every tile moves into its class block. Block size shows the raw tile count, not true land area.'
+    ? `Every tile moves into its class block. Block size now matches true land area: cropland takes ${decimal.format(cropland.percent)}% of Flanders and the same share of the tiles.`
+    : 'Every tile moves into its class block. Block size matches true land area.'
 
   return [
     {
       kind: 'intro',
       kicker: `Flanders · ${stats.year}`,
       title: 'A region made of squares',
-      body: `Every square is a ${stats.tile_size_m / 1000} km tile, coloured by its dominant land use. The grid holds ${number.format(stats.retained_tiles)} tiles and covers ${number.format(stats.total_area_km2)} km². Scroll to isolate each class, then regroup the tiles.`,
+      body: `Every square is a ${stats.tile_size_m / 1000} km tile, coloured by its land use. The grid holds ${number.format(stats.retained_tiles)} tiles and covers ${number.format(stats.total_area_km2)} km². Scroll to isolate each class, then regroup the tiles.`,
     },
     ...classSteps,
     {
@@ -93,9 +93,9 @@ function buildSteps(data: MapData): Step[] {
     },
     {
       kind: 'closing',
-      kicker: "What's next",
+      kicker: 'How this map works',
       title: 'Dominant is not representative',
-      body: 'Small, linear and fragmented classes lose the majority vote inside 2 km squares. The next step applies a largest-remainder correction so the tile counts can match the true area shares.',
+      body: 'Small, linear and fragmented classes lose the majority vote inside 2 km squares. A largest-remainder correction reassigns the least confident tiles — those with the smallest dominant-class margin — until every class\'s tile count matches its true area share.',
     },
   ]
 }
@@ -169,7 +169,7 @@ function DataTable({ data }: { data: MapData }) {
                   {decimal.format(item.percent)}%
                 </td>
                 <td className="py-1.5 text-right">
-                  {number.format(item.raw_tile_count)}
+                  {number.format(item.target_tile_count)}
                 </td>
               </tr>
             ))}
@@ -250,7 +250,7 @@ function StepCard({
                 <ProgressBar value={step.tileShare ?? 0} />
               </div>
               <p className="mt-1.5 text-right text-[10px] tabular-nums text-ink/40">
-                {number.format(item.raw_tile_count)} of{' '}
+                {number.format(item.target_tile_count)} of{' '}
                 {number.format(data.stats.retained_tiles)} tiles
               </p>
             </div>
@@ -274,8 +274,8 @@ function StepCard({
             <p className="mt-4 text-[9px] leading-relaxed text-ink/40">
               Source: Departement Omgeving, Landgebruik Vlaanderen{' '}
               {data.stats.year} v3. {data.stats.source_crs}, 2 km tiles.
-              Percentages are true area shares; map colours show the raw
-              dominant class.
+              Percentages are true area shares; map colours show the dominant
+              class after largest-remainder correction.
             </p>
           </>
         ) : null}
@@ -397,7 +397,7 @@ export function Scrollytelling({ data }: ScrollytellingProps) {
               Flanders · land use · {stats.year}
             </p>
             <p className="mt-1 font-serif text-lg leading-none text-ink/90 sm:text-xl">
-              {mode === 'waffle' ? 'Regrouped by class' : 'Dominant land use'}
+              {mode === 'waffle' ? 'Regrouped by class' : 'Land use'}
             </p>
           </div>
 

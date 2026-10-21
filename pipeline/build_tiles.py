@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import heapq
 import json
 import math
 import os
@@ -75,12 +76,77 @@ def largest_remainder(rounds: list[float], total: int) -> np.ndarray:
     diff = total - int(target.sum())
     rem = rounds - target
     if diff > 0:
-        order = np.argsort(-rem)[:diff]
+        order = np.argsort(-rem, kind="stable")[:diff]
         target[order] += 1
     elif diff < 0:
-        order = np.argsort(rem)[: -diff]
+        order = np.argsort(rem, kind="stable")[: -diff]
         target[order] -= 1
     return target
+
+
+def tile_margins(group_counts, rows_idx, cols_idx) -> np.ndarray:
+    """Margin between dominant and runner-up group pixel count per retained tile."""
+    sel = group_counts[rows_idx, cols_idx]
+    part = np.partition(sel, -2, axis=-1)
+    return part[:, -1] - part[:, -2]
+
+
+def apply_correction(group_counts, dominant, rows_idx, cols_idx, targets):
+    """Reassign lowest-confidence tiles until per-class counts match targets.
+
+    Targets must sum to the number of retained tiles. Candidates are
+    (tile, deficit class) pairs where the tile holds at least one pixel of the
+    deficit class and its current class has a surplus. They are processed by
+    ascending dominant-class margin (lowest confidence first), tie-broken by
+    more pixels of the receiving class, then by (row, col) for determinism.
+    """
+    G = len(targets)
+    corrected = dominant.copy()
+    sel = group_counts[rows_idx, cols_idx]
+    margins = tile_margins(group_counts, rows_idx, cols_idx)
+    current = dominant[rows_idx, cols_idx]
+    counts = np.bincount(current, minlength=G)
+    deficit = targets.astype(int) - counts
+    if int(deficit.sum()) != 0:
+        raise ValueError(f"Targets sum to {int(targets.sum())}, retained tiles to {len(rows_idx)}")
+
+    reassignments: list[tuple[int, int, int, int, int]] = []
+
+    heap = []
+    for i in range(len(rows_idx)):
+        a = int(current[i])
+        if deficit[a] >= 0:
+            continue
+        for b in range(G):
+            cnt = int(sel[i, b])
+            if b != a and cnt > 0:
+                heapq.heappush(heap, (int(margins[i]), -cnt, int(rows_idx[i]), int(cols_idx[i]), i, a, b))
+
+    while heap:
+        margin, _negcnt, r, c, i, a, b = heapq.heappop(heap)
+        if deficit[b] <= 0 or deficit[a] >= 0 or corrected[rows_idx[i], cols_idx[i]] != a:
+            continue
+        corrected[rows_idx[i], cols_idx[i]] = b
+        deficit[a] += 1
+        deficit[b] -= 1
+        reassignments.append((r, c, a, b, int(margin)))
+
+    unfilled = [b for b in range(G) if deficit[b] > 0]
+    if unfilled:
+        print(f"WARNING: largest-remainder fallback engaged for classes {unfilled}")
+        order = np.argsort(margins, kind="stable")
+        for i in order:
+            b = next((b for b in unfilled if deficit[b] > 0), None)
+            if b is None:
+                break
+            a = int(corrected[rows_idx[i], cols_idx[i]])
+            if deficit[a] < 0:
+                corrected[rows_idx[i], cols_idx[i]] = b
+                deficit[a] += 1
+                deficit[b] -= 1
+                reassignments.append((int(rows_idx[i]), int(cols_idx[i]), a, b, int(margins[i])))
+
+    return corrected, margins, reassignments
 
 
 def aggregate_year(src, lookup, G, tpx, tile_size_m, min_valid_fraction):
@@ -193,7 +259,6 @@ def main() -> None:
 
     retained = base["retained"]
     retained_tiles = int(retained.sum())
-    doms = {y: results[y]["dominant"] for y in year_order}
 
     rows_idx, cols_idx = np.where(retained)
     min_col = int(cols_idx.min()); max_col = int(cols_idx.max())
@@ -204,10 +269,13 @@ def main() -> None:
     valid_pixel_count = int(base["source_counts"][1:].sum())
 
     year_stats = {}
+    corrected_dominants = {}
+    margins_by_year = {}
 
     for year in year_order:
         dom = results[year]["dominant"]
         scounts = results[year]["source_counts"]
+        group_counts = results[year]["group_counts"]
 
         group_pixels = np.zeros(G, dtype=np.int64)
         for sid in range(1, 20):
@@ -235,6 +303,9 @@ def main() -> None:
                 "target_tile_count": 0,
             })
         target = largest_remainder([c["area_km2"] / args.tile_size_m ** 2 * 1_000_000 for c in cls], retained_tiles)
+        corrected, margins, reassignments = apply_correction(group_counts, dom, rows_idx, cols_idx, target)
+        corrected_dominants[year] = corrected
+        margins_by_year[year] = margins
         for i in range(G):
             cls[i]["target_tile_count"] = int(target[i])
         cls.sort(key=lambda x: x["area_km2"], reverse=True)
@@ -245,10 +316,17 @@ def main() -> None:
             "retained_tiles": retained_tiles,
             "tile_size_m": args.tile_size_m,
             "tile_area_km2": args.tile_size_m ** 2 / 1_000_000,
+            "correction": {
+                "applied": True,
+                "method": "largest remainder (lowest-margin reassignment)",
+                "reassigned_tiles": len(reassignments),
+            },
             "classes": cls,
         }
+        print(f"  {year}: corrected {len(reassignments)} of {retained_tiles} tiles")
 
-    # Setup for transitions
+    # Setup for transitions (dominants are the corrected classes)
+    doms = corrected_dominants
     years_map = dict((y, p) for y, p, _ in sources)
     src_opens = dict((y, None) for y, _, _ in sources)
 
@@ -343,20 +421,23 @@ def main() -> None:
     default_stats["source_crs"] = base["crs"]
     default_stats["year"] = default_year
     default_stats["map"] = evolution["map"]
-    default_stats["correction"] = {"applied": False, "method": "raw dominant class"}
+    default_stats["correction"] = year_stats[str(default_year)]["correction"]
 
     with (output_dir / "stats.json").open("w", encoding="utf-8") as f:
         json.dump(default_stats, f, ensure_ascii=False, indent=2)
 
     # tiles.json for default year: use class from default year (index in year_order)
     default_idx = year_order.index(default_year)
+    default_raw_dominant = results[default_year]["dominant"]
     default_tiles = []
-    for t in tiles_list:
+    for k, t in enumerate(tiles_list):
         default_tiles.append({
             "id": t["id"],
             "col": t["col"],
             "row": t["row"],
             "class": group_ids[t["classes"][default_idx]],
+            "dominant_class": group_ids[int(default_raw_dominant[rows_idx[k], cols_idx[k]])],
+            "margin": int(margins_by_year[default_year][k]),
         })
     with (output_dir / "tiles.json").open("w", encoding="utf-8") as f:
         json.dump({"tiles": default_tiles}, f, ensure_ascii=False, separators=(",", ":"))
