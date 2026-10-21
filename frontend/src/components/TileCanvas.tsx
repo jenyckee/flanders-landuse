@@ -1,104 +1,264 @@
-import { useEffect, useRef, useState } from 'react'
-import { scaleLinear } from 'd3'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { easeCubicInOut } from 'd3'
 import type { Stats, Tile } from '../lib/types'
+import type { MapLayout, WaffleLayout } from '../lib/layout'
+
+export type GraphicMode = 'map' | 'waffle'
 
 interface TileCanvasProps {
   tiles: Tile[]
   stats: Stats
-}
-
-interface Size {
+  mapLayout: MapLayout
+  waffleLayout: WaffleLayout
+  mode: GraphicMode
+  activeClass: string | null
   width: number
   height: number
 }
 
-const FALLBACK_SIZE: Size = { width: 960, height: 420 }
+const TRANSITION_MS = 720
+const INACTIVE_ALPHA = 0.14
+const STAGGER_MS = 190
 
-export function TileCanvas({ tiles, stats }: TileCanvasProps) {
+export function TileCanvas({
+  tiles,
+  stats,
+  mapLayout,
+  waffleLayout,
+  mode,
+  activeClass,
+  width,
+  height,
+}: TileCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const frameRef = useRef<HTMLDivElement>(null)
-  const [size, setSize] = useState<Size>(FALLBACK_SIZE)
+  const propsRef = useRef({
+    tiles,
+    stats,
+    mapLayout,
+    waffleLayout,
+    mode,
+    activeClass,
+    width,
+    height,
+  })
+  propsRef.current = {
+    tiles,
+    stats,
+    mapLayout,
+    waffleLayout,
+    mode,
+    activeClass,
+    width,
+    height,
+  }
+
+  const progressRef = useRef<Float32Array>(new Float32Array(tiles.length))
+  const fromRef = useRef<Float32Array>(new Float32Array(tiles.length))
+  const targetRef = useRef(0)
+  const startRef = useRef<number | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const alphaRef = useRef<Map<string, number>>(
+    new Map(stats.classes.map((item) => [item.id, 1])),
+  )
+  const [reducedMotion, setReducedMotion] = useState(false)
+
+  const delays = useMemo(() => {
+    const spanCols = Math.max(1, stats.map.max_col - stats.map.min_col)
+    const spanRows = Math.max(1, stats.map.max_row - stats.map.min_row)
+    return tiles.map((tile) => {
+      const x = (tile.col - stats.map.min_col) / spanCols
+      const y = (tile.row - stats.map.min_row) / spanRows
+      return (x * 0.35 + y * 0.65) * STAGGER_MS
+    })
+  }, [stats.map, tiles])
+
+  const colors = useMemo(
+    () => new Map(stats.classes.map((item) => [item.id, item.color] as const)),
+    [stats.classes],
+  )
 
   useEffect(() => {
-    const element = frameRef.current
-    if (!element) return
-
-    const update = () => {
-      const rect = element.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        setSize({ width: rect.width, height: rect.height })
-      }
-    }
-
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(media.matches)
     update()
-    const observer = new ResizeObserver(update)
-    observer.observe(element)
-    return () => observer.disconnect()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
   }, [])
 
-  useEffect(() => {
+  const drawFrame = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas || size.width <= 0 || size.height <= 0) return
+    if (!canvas) return
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width = Math.round(size.width * dpr)
-    canvas.height = Math.round(size.height * dpr)
-    canvas.style.width = `${size.width}px`
-    canvas.style.height = `${size.height}px`
+    const current = propsRef.current
+    if (current.width <= 0 || current.height <= 0) return
 
     const context = canvas.getContext('2d')
     if (!context) return
 
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
-    context.clearRect(0, 0, size.width, size.height)
+    context.clearRect(0, 0, current.width, current.height)
 
-    const padding = size.width < 640 ? 10 : 18
-    const spanCols = stats.map.max_col - stats.map.min_col + 1
-    const spanRows = stats.map.max_row - stats.map.min_row + 1
-    const pitch = Math.min(
-      (size.width - padding * 2) / spanCols,
-      (size.height - padding * 2) / spanRows,
-    )
-    if (pitch <= 0) return
+    const drawPass = (activePass: boolean) => {
+      for (let index = 0; index < current.tiles.length; index += 1) {
+        const tile = current.tiles[index]
+        const isActive = tile.class === current.activeClass
+        if (current.activeClass && isActive !== activePass) continue
 
-    const mapWidth = spanCols * pitch
-    const mapHeight = spanRows * pitch
-    const offsetX = (size.width - mapWidth) / 2
-    const offsetY = (size.height - mapHeight) / 2
+        const from = current.mapLayout.positions[index]
+        const to = current.waffleLayout.positions[index]
+        if (!from || !to) continue
 
-    const x = scaleLinear()
-      .domain([stats.map.min_col, stats.map.max_col + 1])
-      .range([offsetX, offsetX + mapWidth])
-    const y = scaleLinear()
-      .domain([stats.map.min_row, stats.map.max_row + 1])
-      .range([offsetY, offsetY + mapHeight])
+        const progress = progressRef.current[index] ?? 0
+        const x = from.x + (to.x - from.x) * progress
+        const y = from.y + (to.y - from.y) * progress
+        const size = from.size + (to.size - from.size) * progress
+        const color = colors.get(tile.class)
+        if (!color) continue
 
-    const gap = Math.max(0.55, pitch * 0.11)
-    const tileSize = Math.max(0.5, pitch - gap)
-    const colors = new Map(
-      stats.classes.map((item) => [item.id, item.color] as const),
-    )
-
-    for (const tile of tiles) {
-      const color = colors.get(tile.class)
-      if (!color) continue
-      context.fillStyle = color
-      context.fillRect(x(tile.col), y(tile.row), tileSize, tileSize)
+        context.globalAlpha = alphaRef.current.get(tile.class) ?? 1
+        context.fillStyle = color
+        context.fillRect(x, y, size, size)
+      }
     }
-  }, [size, stats, tiles])
+
+    if (current.activeClass) {
+      drawPass(false)
+      drawPass(true)
+    } else {
+      drawPass(true)
+    }
+    context.globalAlpha = 1
+  }, [colors])
+
+  const tick = useCallback(
+    (now: number) => {
+      const current = propsRef.current
+      let animating = false
+
+      if (startRef.current !== null) {
+        const elapsed = now - startRef.current
+        let progressDone = true
+        for (let index = 0; index < progressRef.current.length; index += 1) {
+          const local = Math.min(
+            1,
+            Math.max(0, (elapsed - (delays[index] ?? 0)) / TRANSITION_MS),
+          )
+          if (local < 1) progressDone = false
+          const eased = easeCubicInOut(local)
+          progressRef.current[index] =
+            fromRef.current[index] +
+            (targetRef.current - fromRef.current[index]) * eased
+        }
+        if (progressDone) startRef.current = null
+        animating = true
+      }
+
+      let alphaAnimating = false
+      for (const item of current.stats.classes) {
+        const target = current.activeClass
+          ? item.id === current.activeClass
+            ? 1
+            : INACTIVE_ALPHA
+          : 1
+        const previous = alphaRef.current.get(item.id) ?? 1
+        const next = previous + (target - previous) * 0.2
+        const settled = Math.abs(next - target) < 0.004
+        alphaRef.current.set(item.id, settled ? target : next)
+        if (!settled) alphaAnimating = true
+      }
+
+      drawFrame()
+
+      if (animating || alphaAnimating) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        rafRef.current = null
+      }
+    },
+    [delays, drawFrame],
+  )
+
+  const ensureLoop = useCallback(() => {
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(tick)
+    }
+  }, [tick])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    canvas.width = Math.round(width * dpr)
+    canvas.height = Math.round(height * dpr)
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    drawFrame()
+  }, [width, height, drawFrame])
+
+  useEffect(() => {
+    const target = mode === 'waffle' ? 1 : 0
+    if (reducedMotion) {
+      progressRef.current.fill(target)
+      startRef.current = null
+      drawFrame()
+      return
+    }
+
+    const alreadyThere = progressRef.current.every(
+      (value) => Math.abs(value - target) < 0.001,
+    )
+    if (alreadyThere) return
+
+    fromRef.current = progressRef.current.slice()
+    targetRef.current = target
+    startRef.current = performance.now()
+    ensureLoop()
+  }, [mode, reducedMotion, drawFrame, ensureLoop])
+
+  useEffect(() => {
+    if (reducedMotion) {
+      for (const item of stats.classes) {
+        alphaRef.current.set(
+          item.id,
+          activeClass ? (item.id === activeClass ? 1 : INACTIVE_ALPHA) : 1,
+        )
+      }
+      drawFrame()
+      return
+    }
+    ensureLoop()
+  }, [activeClass, reducedMotion, stats.classes, drawFrame, ensureLoop])
+
+  useEffect(() => {
+    drawFrame()
+  }, [mapLayout, waffleLayout, drawFrame])
+
+  useEffect(() => {
+    if (progressRef.current.length !== tiles.length) {
+      progressRef.current = new Float32Array(tiles.length)
+      fromRef.current = new Float32Array(tiles.length)
+    }
+    alphaRef.current = new Map(stats.classes.map((item) => [item.id, 1]))
+    drawFrame()
+  }, [tiles.length, stats.classes, drawFrame])
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [])
 
   return (
-    <div
-      ref={frameRef}
-      className="relative h-[48svh] min-h-[300px] w-full overflow-hidden rounded-2xl bg-[#efeadf] sm:h-[56svh] lg:h-[64svh]"
-    >
-      <canvas
-        ref={canvasRef}
-        className="block h-full w-full"
-        role="img"
-        aria-label={`Tile map of dominant land use in Flanders, ${stats.year}. ${stats.retained_tiles.toLocaleString('en-US')} tiles of ${stats.tile_size_m / 1000} kilometres across.`}
-      />
-      <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-ink/5" />
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="block h-full w-full"
+      role="img"
+      aria-label={`Tile map of dominant land use in Flanders, ${stats.year}. ${stats.retained_tiles.toLocaleString('en-US')} tiles of ${stats.tile_size_m / 1000} kilometres across.`}
+    />
   )
 }

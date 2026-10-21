@@ -60,5 +60,18 @@ npx vercel --prod
 - 3,407 tiles at 2 km.
 - 13,624.44 km² mapped.
 - Nine grouped land-use classes.
-- Raw dominant-class map only; largest-remainder correction and scrollytelling
-  are deferred.
+- Raw dominant-class map only; largest-remainder correction is deferred.
+
+## Scrollytelling
+
+The `feature/scrollytelling` branch adds a Scrollama story over the raw
+dominant tile grid:
+
+- intro map,
+- one highlight step per land-use class,
+- a regrouped waffle view of the same tiles,
+- a closing step with the data table.
+
+On the waffle view, block sizes show raw dominant tile counts, not true area
+shares. The story states this explicitly; the largest-remainder correction is
+still deferred.
