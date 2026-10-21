@@ -1,0 +1,18 @@
+# Python
+pipeline/.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Vercel
+frontend/.vercel/
+
+# Generated GDAL sidecar
+*.aux.xml
+
+# macOS
+.DS_Store

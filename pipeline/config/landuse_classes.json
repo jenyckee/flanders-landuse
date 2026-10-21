@@ -1,0 +1,88 @@
+{
+  "source_classes": [
+    { "id": 1, "nl": "Huizen en tuinen", "en": "Housing and gardens" },
+    { "id": 2, "nl": "Industrie", "en": "Industry" },
+    { "id": 3, "nl": "Commerciële doeleinden", "en": "Commercial uses" },
+    { "id": 4, "nl": "Diensten", "en": "Services" },
+    { "id": 5, "nl": "Transportinfrastructuur", "en": "Transport infrastructure" },
+    { "id": 6, "nl": "Recreatie", "en": "Recreation" },
+    { "id": 7, "nl": "Landbouwgebouwen en -infrastructuur", "en": "Agricultural buildings and infrastructure" },
+    { "id": 8, "nl": "Overige bebouwde terreinen", "en": "Other built-up land" },
+    { "id": 9, "nl": "Overige onbebouwde terreinen", "en": "Other unbuilt land" },
+    { "id": 10, "nl": "Actieve groeves", "en": "Active quarries" },
+    { "id": 11, "nl": "Luchthavens", "en": "Airports" },
+    { "id": 12, "nl": "Bos", "en": "Forest" },
+    { "id": 13, "nl": "Akker", "en": "Cropland" },
+    { "id": 14, "nl": "Grasland in landbouwgebruik", "en": "Agricultural grassland" },
+    { "id": 15, "nl": "Struikgewas", "en": "Shrubland" },
+    { "id": 16, "nl": "Braakliggend en duinen", "en": "Fallow land and dunes" },
+    { "id": 17, "nl": "Water", "en": "Water" },
+    { "id": 18, "nl": "Moeras", "en": "Marsh" },
+    { "id": 19, "nl": "Overige graslanden", "en": "Other grassland" }
+  ],
+  "groups": [
+    {
+      "id": "cropland",
+      "nl": "Akkerland",
+      "en": "Cropland",
+      "color": "#d9b45b",
+      "source_classes": [13]
+    },
+    {
+      "id": "grassland",
+      "nl": "Grasland",
+      "en": "Grassland",
+      "color": "#9bbf72",
+      "source_classes": [14, 19]
+    },
+    {
+      "id": "built",
+      "nl": "Bebouwd gebied",
+      "en": "Built-up",
+      "color": "#c46b5a",
+      "source_classes": [1, 7, 8]
+    },
+    {
+      "id": "forest",
+      "nl": "Bos",
+      "en": "Forest",
+      "color": "#2f6b4f",
+      "source_classes": [12]
+    },
+    {
+      "id": "transport",
+      "nl": "Transport en infrastructuur",
+      "en": "Transport & infrastructure",
+      "color": "#5b5b5b",
+      "source_classes": [5, 11]
+    },
+    {
+      "id": "nature",
+      "nl": "Natuur en overige open ruimte",
+      "en": "Nature & other open land",
+      "color": "#5fa08c",
+      "source_classes": [9, 10, 15, 16, 18]
+    },
+    {
+      "id": "industry",
+      "nl": "Industrie, handel en diensten",
+      "en": "Industry, commerce & services",
+      "color": "#8b6aae",
+      "source_classes": [2, 3, 4]
+    },
+    {
+      "id": "recreation",
+      "nl": "Recreatie",
+      "en": "Recreation",
+      "color": "#e39b52",
+      "source_classes": [6]
+    },
+    {
+      "id": "water",
+      "nl": "Water",
+      "en": "Water",
+      "color": "#4c7fb0",
+      "source_classes": [17]
+    }
+  ]
+}
