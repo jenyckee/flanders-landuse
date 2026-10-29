@@ -102,6 +102,42 @@ def test_apply_correction_breaks_full_ties_by_position():
     assert counts.tolist() == [1, 1, 1]
 
 
+def test_apply_correction_prefers_previously_corrected_tiles():
+    group_counts, dominant, rows_idx, cols_idx = _scene([
+        (0, 0, [4, 1, 1], 0),
+        (0, 1, [3, 2, 2], 0),
+        (1, 0, [0, 4, 0], 1),
+        (1, 1, [0, 3, 0], 1),
+    ])
+    previous = dominant.copy()
+    previous[0, 0] = 2
+    targets = np.array([1, 2, 1])
+
+    corrected, _, reassignments = apply_correction(group_counts, dominant, rows_idx, cols_idx, targets, previous)
+
+    assert reassignments == [(0, 0, 0, 2, 3)]
+    counts = np.bincount(corrected[rows_idx, cols_idx], minlength=3)
+    assert counts.tolist() == [1, 2, 1]
+
+
+def test_apply_correction_anchor_requires_pixels_of_receiving_class():
+    group_counts, dominant, rows_idx, cols_idx = _scene([
+        (0, 0, [4, 2, 0], 0),
+        (0, 1, [3, 3, 1], 0),
+        (1, 0, [0, 4, 0], 1),
+        (1, 1, [0, 3, 0], 1),
+    ])
+    previous = dominant.copy()
+    previous[0, 0] = 2
+    targets = np.array([1, 2, 1])
+
+    corrected, _, reassignments = apply_correction(group_counts, dominant, rows_idx, cols_idx, targets, previous)
+
+    assert reassignments == [(0, 1, 0, 2, 0)]
+    counts = np.bincount(corrected[rows_idx, cols_idx], minlength=3)
+    assert counts.tolist() == [1, 2, 1]
+
+
 def test_apply_correction_is_noop_when_counts_match_targets():
     group_counts, dominant, rows_idx, cols_idx = _scene([
         (0, 0, [5, 1, 0], 0),

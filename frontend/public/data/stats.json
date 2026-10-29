@@ -6,7 +6,7 @@
   "tile_area_km2": 4.0,
   "correction": {
     "applied": true,
-    "method": "largest remainder (lowest-margin reassignment)",
+    "method": "largest remainder (count-first, year-anchored)",
     "reassigned_tiles": 718
   },
   "classes": [

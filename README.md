@@ -11,10 +11,11 @@ resolution: 10 m. Sources are listed in `pipeline/config/years.json`.
 
 The pipeline aggregates each raster into 2 km square tiles and assigns each
 retained tile its dominant grouped land-use class. Edge tiles with less than
-50% valid area are dropped. A largest-remainder correction then reassigns the
-least confident tiles (smallest dominant-class margin) until every class's tile
-count matches its true area share. Tiles retained in every year form the common
-area used by the evolution view.
+50% valid area are dropped. A largest-remainder correction then reassigns
+tiles until every class's tile count matches its true area share, preferring
+tiles that hold the most pixels of the receiving class and keeping prior-year
+corrections stable so the evolution view doesn't flicker. Tiles retained in
+every year form the common area used by the evolution view.
 
 ## Run the pipeline
 
@@ -66,8 +67,9 @@ npx vercel --prod
 - 3,407 tiles at 2 km, retained in all four snapshots.
 - 13,624.44 km² mapped.
 - Nine grouped land-use classes.
-- Tile counts corrected to true area shares; ~700 tiles per year are
-  reassigned from surplus to deficit classes, lowest confidence first.
+- Tile counts corrected to true area shares; ~600–700 tiles per year are
+  reassigned from surplus to deficit classes. Corrections are anchored to the
+  previous year, so cross-year flips track real land-use change.
 
 ## Views
 

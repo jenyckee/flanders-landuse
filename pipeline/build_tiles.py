@@ -91,14 +91,16 @@ def tile_margins(group_counts, rows_idx, cols_idx) -> np.ndarray:
     return part[:, -1] - part[:, -2]
 
 
-def apply_correction(group_counts, dominant, rows_idx, cols_idx, targets):
-    """Reassign lowest-confidence tiles until per-class counts match targets.
+def apply_correction(group_counts, dominant, rows_idx, cols_idx, targets, previous=None):
+    """Reassign tiles until per-class counts match targets, stable across years.
 
     Targets must sum to the number of retained tiles. Candidates are
     (tile, deficit class) pairs where the tile holds at least one pixel of the
     deficit class and its current class has a surplus. They are processed by
-    ascending dominant-class margin (lowest confidence first), tie-broken by
-    more pixels of the receiving class, then by (row, col) for determinism.
+    temporal anchor first (tile already had that class in `previous`), then by
+    more pixels of the receiving class, then ascending dominant-class margin,
+    then (row, col) for determinism. Anchoring keeps classes like water from
+    flickering between years in the evolution view.
     """
     G = len(targets)
     corrected = dominant.copy()
@@ -120,10 +122,11 @@ def apply_correction(group_counts, dominant, rows_idx, cols_idx, targets):
         for b in range(G):
             cnt = int(sel[i, b])
             if b != a and cnt > 0:
-                heapq.heappush(heap, (int(margins[i]), -cnt, int(rows_idx[i]), int(cols_idx[i]), i, a, b))
+                anchored = 0 if previous is not None and previous[rows_idx[i], cols_idx[i]] == b else 1
+                heapq.heappush(heap, (anchored, -cnt, int(margins[i]), int(rows_idx[i]), int(cols_idx[i]), i, a, b))
 
     while heap:
-        margin, _negcnt, r, c, i, a, b = heapq.heappop(heap)
+        _anchored, _negcnt, margin, r, c, i, a, b = heapq.heappop(heap)
         if deficit[b] <= 0 or deficit[a] >= 0 or corrected[rows_idx[i], cols_idx[i]] != a:
             continue
         corrected[rows_idx[i], cols_idx[i]] = b
@@ -303,7 +306,9 @@ def main() -> None:
                 "target_tile_count": 0,
             })
         target = largest_remainder([c["area_km2"] / args.tile_size_m ** 2 * 1_000_000 for c in cls], retained_tiles)
-        corrected, margins, reassignments = apply_correction(group_counts, dom, rows_idx, cols_idx, target)
+        year_pos = year_order.index(year)
+        previous = corrected_dominants[year_order[year_pos - 1]] if year_pos > 0 else None
+        corrected, margins, reassignments = apply_correction(group_counts, dom, rows_idx, cols_idx, target, previous)
         corrected_dominants[year] = corrected
         margins_by_year[year] = margins
         for i in range(G):
@@ -318,7 +323,7 @@ def main() -> None:
             "tile_area_km2": args.tile_size_m ** 2 / 1_000_000,
             "correction": {
                 "applied": True,
-                "method": "largest remainder (lowest-margin reassignment)",
+                "method": "largest remainder (count-first, year-anchored)",
                 "reassigned_tiles": len(reassignments),
             },
             "classes": cls,
